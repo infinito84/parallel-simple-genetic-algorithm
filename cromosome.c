@@ -4,15 +4,6 @@ int decimals = 2;
 int adnSize, xSize, ySize, xBits = 0, yBits = 0;
 double nDecimals;
 
-struct Cromosome{
-    double x;
-    double y;
-    int *adn;
-    double fitness;
-    int roulette;
-    int selected;
-};
-
 void calcSizes(){
     nDecimals = pow(10,decimals);
     xSize = (maxX - minX) * nDecimals;
@@ -29,18 +20,17 @@ void calcSizes(){
         bits++;
     }
     adnSize = xBits + yBits;
-    printf("Bits: adn(%d), x(%d), y(%d)", adnSize, xBits, yBits);
+    printf("Bits: adn(%d), x(%d), y(%d)\n", adnSize, xBits, yBits);
 }
 
 struct Cromosome randomCromosome(){
     struct Cromosome temp;
-    double x = nextRandom(xSize + 1);
-    double y = nextRandom(ySize + 1);
+    double x = randomInt(xSize + 1);
+    double y = randomInt(ySize + 1);
     temp.x = (x / nDecimals) + minX;
     temp.y = (y / nDecimals) + minY;
     temp.adn = (int *)malloc(adnSize * sizeof(int));
     temp.fitness = fitness(temp.x, temp.y);
-    temp.selected = 0;
     int yCount = 0;
     for(int i = adnSize - 1; i >= 0; i--){
         if(yCount <= yBits){

@@ -1,5 +1,3 @@
-int mutation = 10; //among 100;
-
 void binary2x(struct Cromosome *child){
     double xCount = 0;
     double x = 0;
@@ -25,14 +23,12 @@ void binary2y(struct Cromosome *child){
 }
 
 void crossover(struct Cromosome *parent1, struct Cromosome *parent2, struct Cromosome *child1, struct Cromosome *child2){
-    int bitSplitter = nextRandom(adnSize);
-    int mutation1 = nextRandom(adnSize);
-    int mutation2 = nextRandom(adnSize);
-    int doMutation = nextRandom(100);
+    int bitSplitter = randomInt(adnSize);
+    int mutation1 = randomInt(adnSize);
+    int mutation2 = randomInt(adnSize);
+    int doMutation = randomInt(100);
     child1->adn = (int *)malloc(adnSize * sizeof(int));
-    child1->selected = 0;
     child2->adn = (int *)malloc(adnSize * sizeof(int));
-    child2->selected = 0;
     //showCromosome(parent1);
     //showCromosome(parent2);
     //printf("bitSplitter: %d\n", bitSplitter);
@@ -45,7 +41,7 @@ void crossover(struct Cromosome *parent1, struct Cromosome *parent2, struct Crom
             child1->adn[i] = parent2->adn[i];
             child2->adn[i] = parent1->adn[i];
         }
-        if(doMutation < mutation){
+        if(doMutation < MUTATION){
             if(i == mutation1){
                 child1->adn[i] = !child1->adn[i];
             }

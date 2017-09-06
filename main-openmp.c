@@ -1,18 +1,14 @@
 #include <stdio.h>
 #include <omp.h>
 #include <float.h>
-#include <pthread.h>
-#include "bukin.c"
-#include "random.c"
+#include "structures.c"
+#include "constants.c"
+#include "utils.c"
 #include "cromosome.c"
 #include "crossover.c"
 
-#define THREADS 4
-#define N 10000
-#define N_PARENTS  N / 2
-
 struct Cromosome *population;
-struct Cromosome parents[N_PARENTS];
+struct Couple parents[N_COUPLES];
 int generation = 0;
 double minGlobal = DBL_MAX;
 int minGeneration = 0;
@@ -21,22 +17,24 @@ struct Cromosome minCromosome;
 int main(){
     setSeed();
     calcSizes();
-    printf("\nMínimo local: %f\n", fitness(-10,1));
+
     // Se crea población inicial
     population = (struct Cromosome *)malloc(N * sizeof(struct Cromosome));
     for(int i=0;i<N;i++){
         population[i] = randomCromosome();
     }
-    while(generation < 100){
+    while(generation < GENERATIONS){
         generation++;
-        double min = DBL_MAX;
-        double total = 0;
+        double min = DBL_MAX, max = -DBL_MAX, total = 0;
         struct Cromosome tempCromosome;
         for(int i=0;i<N;i++){
             total += population[i].fitness;
             if(population[i].fitness < min){
                 min = population[i].fitness;
                 tempCromosome = population[i];
+            }
+            if(population[i].fitness > max){
+                max = population[i].fitness;
             }
         }
         if(min < minGlobal){
@@ -46,53 +44,49 @@ int main(){
         }
         printf("Generation #%d, min: %f, avg: %f, global(%d): %f\n", generation, min, total/N, minGeneration, minGlobal);
 
-        // Se realiza cálculo de la ruleta
-        double max = -DBL_MAX;
+        // Se realiza cálculo de la ruleta (minimización)
+        float totalRoulette = 0;
         for(int i=0;i<N;i++){
-            if(population[i].fitness > max) max = population[i].fitness;
+            totalRoulette = max - min - population[i].fitness + totalRoulette;
+            population[i].roulette = totalRoulette;
         }
-        max = (max + fabs(min)) * 1000;
-        int limit = 0;
-        for(int i=0;i<N;i++){
-            population[i].roulette = max - population[i].fitness*1000 + limit;
-            limit = population[i].roulette;
-            //printf("Posición %d, value: %f\n", limit, population[i].fitness);
-        }
-        // Se seleccionan N_PARENTS
-        limit++;
+        // Se seleccionan N_COUPLES
         omp_set_num_threads(THREADS);
         #pragma omp parallel
         {
             int id =  omp_get_thread_num();
-            int chunk = N_PARENTS/THREADS;
+            int chunk = N_COUPLES/THREADS;
             int start = id * chunk;
             int end = start + chunk;
             do{
-                int nRandom = nextRandom(limit);
+                double n1 = randomDouble(totalRoulette);
+                double n2 = randomDouble(totalRoulette);
                 for(int j=0;j<N;j++){
-                    if(!population[j].selected && population[j].roulette >= nRandom){
-                        population[j].selected = 1;
-                        parents[start] = population[j];
-                        break;
+                    if(population[j].roulette >= n1 && n1 != -1){
+                        parents[start].parent1 = population[j];
+                        n1 = -1;
+                    }
+                    if(population[j].roulette >= n2 && n2 != -1){
+                        parents[start].parent2 = population[j];
+                        n2 = -1;
                     }
                 }
                 start++;
             }while(start < end);
-
         }
 
+        population = (struct Cromosome *)malloc(N * sizeof(struct Cromosome));
         #pragma omp parallel
         {
             int id = omp_get_thread_num();
-            int chunk = N_PARENTS/THREADS;
+            int chunk = N_COUPLES/THREADS;
             int start = id * chunk;
             int end = start + chunk;
             int child = start * 2;
-            //printf("id: %d, limit: %d, start: %d, end: %d, parents: %d, chunk: %d\n",id, limit, start, end, N_PARENTS, chunk);
+            //printf("id: %d, limit: %d, start: %d, end: %d, parents: %d, chunk: %d\n",id, limit, start, end, N_COUPLES, chunk);
             do{
-                crossover(&parents[start], &parents[start+1], &population[child++], &population[child++]);
-                crossover(&parents[start], &parents[start+1], &population[child++], &population[child++]);
-                start+=2;
+                crossover(&parents[start].parent1, &parents[start].parent2, &population[child++], &population[child++]);
+                start++;
             }while(start < end);
         }
     }
