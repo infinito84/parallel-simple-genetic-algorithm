@@ -6,27 +6,33 @@
 #include "cromosome.c"
 #include "crossover.c"
 
-struct Cromosome *population;
-struct Couple parents[N_COUPLES];
-int generation = 0;
-double minGlobal = DBL_MAX;
-int minGeneration = 0;
-struct Cromosome minCromosome;
-
 int main(){
     setSeed();
     calcSizes();
 
-    // Se crea población inicial
-    population = (struct Cromosome *)malloc(N * sizeof(struct Cromosome));
+	Optimal optimal = {randomCromosome(), 0, 0};
+	optimal.individual.fitness = DBL_MAX;
+	N = N / THREADS;
+	N_COUPLES = (N - ELITISM) / 2;
+
+	Cromosome tempCromosome;
+	int generation = 0;
+
+	// Se crea población inicial
+	Cromosome population[N];
+	Couple parents[N_COUPLES];
     for(int i=0;i<N;i++){
         population[i] = randomCromosome();
     }
     while(generation < GENERATIONS){
         generation++;
-        double min = DBL_MAX, max = -DBL_MAX, total = 0;
-        struct Cromosome tempCromosome;
+        double min = DBL_MAX, max = -DBL_MAX, total = 0, total2 = 0;
         for(int i=0;i<N;i++){
+			total2 += population[i].fitness;
+			// Si no está en el rango, le asignamos el valor más alto de castigo (minimizacion)
+			if(!checkBoundaries(&population[i])){
+				population[i].fitness = 300;
+			}
             total += population[i].fitness;
             if(population[i].fitness < min){
                 min = population[i].fitness;
@@ -36,17 +42,25 @@ int main(){
                 max = population[i].fitness;
             }
         }
-        if(min < minGlobal){
-            minGlobal = min;
-            minGeneration = generation;
-            minCromosome = tempCromosome;
-        }
-        printf("Generation #%d, min: %f, avg: %f, global(%d): %f\n", generation, min, total/N, minGeneration, minGlobal);
+		if(min < optimal.individual.fitness){
+			optimal.race = 0;
+			optimal.generation = generation;
+			optimal.individual = tempCromosome;
+			printf("\x1B[32mRaza #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
+				0, generation, min, total2/N, optimal.race, optimal.generation, optimal.individual.fitness);
+		}
+		else{
+			printf("\x1B[0mRaza #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
+				0, generation, min, total2/N, optimal.race, optimal.generation, optimal.individual.fitness);
+		}
+
+		// Ordenamos para dejar los mejores al principio
+		qsort (population, N, sizeof(Cromosome), compare);
 
         // Se realiza cálculo de la ruleta (minimización)
         float totalRoulette = 0;
         for(int i=0;i<N;i++){
-            totalRoulette = max - min - population[i].fitness + totalRoulette;
+			totalRoulette += (max - population[i].fitness + min) / max;
             population[i].roulette = totalRoulette;
         }
 
@@ -71,17 +85,24 @@ int main(){
         }
 
         // Se cruzan los padres los dos que están seguidos (se crea nueva generación)
-        population = (struct Cromosome *)malloc(N * sizeof(struct Cromosome));
         int child = 0;
+		int bitSplitter = randomInt(adnSize);
         for(int i=0;i<N_COUPLES;i++){
-            crossover(&parents[i].parent1, &parents[i].parent2, &population[child++], &population[child++]);
+            crossover(bitSplitter, &parents[i], &population[child++], &population[child++]);
         }
+
+		// Aplicamos mutación
+		int toMutate = N * MUTATION;
+		for(int i=0;i<toMutate;i++){
+			int who = randomInt(N - ELITISM);
+			mutate(&population[who + ELITISM]);
+		}
     }
 
-    printf("Ganador: \n");
-    showCromosome(&minCromosome);
+	printf("\x1B[32mGanador: Raza: %d, Generación: %d\n", optimal.race, optimal.generation);
+    showCromosome(&optimal.individual);
 }
 
 // Compile: gcc main.c -o bin/main -lm
 // Execute: time ./bin/main
-// 8.538
+// 193.276s

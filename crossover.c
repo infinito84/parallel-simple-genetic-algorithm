@@ -1,53 +1,38 @@
-void binary2x(struct Cromosome *child){
+void binary2x(Cromosome *child){
     double xCount = 0;
     double x = 0;
-    for(int i=adnSize - yBits - 2; i>=0; i--){
+    for(int i=adnSize - yBits - 1; i>=0; i--){
         if(child->adn[i]){
             x += pow(2, xCount);
         }
         xCount++;
     }
-    child->x = x / 100 + minX;
+    child->x = x / nDecimals + minX;
 }
 
-void binary2y(struct Cromosome *child){
+void binary2y(Cromosome *child){
     int yCount = 0;
     double y = 0;
     for(int i=adnSize - 1; i>=0; i--){
-        if(child->adn[i] && yCount <= yBits){
+        if(child->adn[i] && yCount < yBits){
             y += pow(2, yCount);
         }
         yCount++;
     }
-    child->y = y / 100 + minY;
+    child->y = y / nDecimals + minY;
 }
 
-void crossover(struct Cromosome *parent1, struct Cromosome *parent2, struct Cromosome *child1, struct Cromosome *child2){
-    int bitSplitter = randomInt(adnSize);
-    int mutation1 = randomInt(adnSize);
-    int mutation2 = randomInt(adnSize);
-    int doMutation = randomInt(100);
+void crossover(int bitSplitter, Couple *couple, Cromosome *child1, Cromosome *child2){
     child1->adn = (int *)malloc(adnSize * sizeof(int));
     child2->adn = (int *)malloc(adnSize * sizeof(int));
-    //showCromosome(parent1);
-    //showCromosome(parent2);
-    //printf("bitSplitter: %d\n", bitSplitter);
     for(int i=0; i<adnSize; i++){
         if(i < bitSplitter){
-            child1->adn[i] = parent1->adn[i];
-            child2->adn[i] = parent2->adn[i];
+            child1->adn[i] = couple->parent1.adn[i];
+            child2->adn[i] = couple->parent2.adn[i];
         }
         else{
-            child1->adn[i] = parent2->adn[i];
-            child2->adn[i] = parent1->adn[i];
-        }
-        if(doMutation < MUTATION){
-            if(i == mutation1){
-                child1->adn[i] = !child1->adn[i];
-            }
-            if(i == mutation2){
-                child2->adn[i] = !child2->adn[i];
-            }
+            child1->adn[i] = couple->parent2.adn[i];
+            child2->adn[i] = couple->parent1.adn[i];
         }
     }
     binary2x(child1);
@@ -56,6 +41,12 @@ void crossover(struct Cromosome *parent1, struct Cromosome *parent2, struct Crom
     binary2y(child2);
     child1->fitness = fitness(child1->x, child1->y);
     child2->fitness = fitness(child2->x, child2->y);
-    //showCromosome(child1);
-    //showCromosome(child2);
+}
+
+void mutate(Cromosome *individual){
+	int bitMutation = randomInt(adnSize);
+	individual->adn[bitMutation] = !individual->adn[bitMutation];
+	binary2x(individual);
+    binary2y(individual);
+    individual->fitness = fitness(individual->x, individual->y);
 }

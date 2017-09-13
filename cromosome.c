@@ -1,11 +1,8 @@
-int minX = -15, maxX = 0;
-int minY = -3, maxY = 3;
-int decimals = 2;
 int adnSize, xSize, ySize, xBits = 0, yBits = 0;
 double nDecimals;
 
 void calcSizes(){
-    nDecimals = pow(10,decimals);
+    nDecimals = pow(10, DECIMALS);
     xSize = (maxX - minX) * nDecimals;
     ySize = (maxY - minY) * nDecimals;
     double bits = 1, temp;
@@ -23,8 +20,8 @@ void calcSizes(){
     printf("Bits: adn(%d), x(%d), y(%d)\n", adnSize, xBits, yBits);
 }
 
-struct Cromosome randomCromosome(){
-    struct Cromosome temp;
+Cromosome randomCromosome(){
+    Cromosome temp;
     double x = randomInt(xSize + 1);
     double y = randomInt(ySize + 1);
     temp.x = (x / nDecimals) + minX;
@@ -33,7 +30,7 @@ struct Cromosome randomCromosome(){
     temp.fitness = fitness(temp.x, temp.y);
     int yCount = 0;
     for(int i = adnSize - 1; i >= 0; i--){
-        if(yCount <= yBits){
+        if(yCount < yBits){
             temp.adn[i] = (int)y % 2;
             y = y / 2;
             yCount++;
@@ -46,8 +43,8 @@ struct Cromosome randomCromosome(){
     return temp;
 }
 
-void showCromosome(struct Cromosome *temp){
+void showCromosome(Cromosome *temp){
     printf("Cromosome: adn(");
     for(int i=0;i<adnSize;i++) printf("%d", temp->adn[i]);
-    printf("), x(%.2f), y(%.2f)\n", temp->x, temp->y);
+    printf("), x(%.2f), y(%.2f), fitness(%f)\n", temp->x, temp->y, temp->fitness);
 }

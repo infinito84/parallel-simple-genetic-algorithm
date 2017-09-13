@@ -1,12 +1,18 @@
-struct Cromosome{
+typedef struct {
     double x;
     double y;
     int *adn;
     double fitness;
     double roulette;
-};
+} Cromosome;
 
-struct Couple{
-    struct Cromosome parent1;
-    struct Cromosome parent2;
-};
+typedef struct {
+    Cromosome parent1;
+    Cromosome parent2;
+} Couple;
+
+typedef struct {
+    Cromosome individual;
+    int generation;
+	int race;
+} Optimal;

@@ -8,109 +8,119 @@
 #include "cromosome.c"
 #include "crossover.c"
 
-struct Cromosome *population;
-struct Couple parents[N_COUPLES];
-int generation = 0;
-double minGlobal = DBL_MAX;
-int minGeneration = 0;
-struct Cromosome minCromosome;
-double totalRoulette = 0;
+Optimal optimal;
 
-void *selectParents(void *arg){
-    int id = *(int*) arg;
-    int chunk = N_COUPLES/THREADS;
-    int start = id * chunk;
-    int end = start + chunk;
-    //printf("id: %d, limit: %F, start: %d, end: %d, parents: %d, chunk: %d\n",id, totalRoulette, start, end, N_COUPLES, chunk);
-    do{
-        double n1 = randomDouble(totalRoulette);
-        double n2 = randomDouble(totalRoulette);
-        for(int j=0;j<N;j++){
-            if(population[j].roulette >= n1 && n1 != -1){
-                parents[start].parent1 = population[j];
-                n1 = -1;
-            }
-            if(population[j].roulette >= n2 && n2 != -1){
-                parents[start].parent2 = population[j];
-                n2 = -1;
-            }
-        }
-        start++;
-    }while(start < end);
+void *createRace(void *arg){
+	Cromosome tempCromosome;
+	int generation = 0;
+	int id = *(int*) arg;
+	// Se crea población inicial
+	Cromosome population[N];
+	Couple parents[N_COUPLES];
+	for(int i=0;i<N;i++){
+		population[i] = randomCromosome();
+	}
+
+	while(generation < GENERATIONS){
+		generation++;
+		double min = DBL_MAX, max = -DBL_MAX, total = 0, total2 = 0;
+		for(int i=0;i<N;i++){
+			// Si no está en el rango, lo castigamos con un fitness alto
+			total2 += population[i].fitness;
+			if(!checkBoundaries(&population[i])){
+				population[i].fitness = 300;
+			}
+			total += population[i].fitness;
+			if(population[i].fitness < min){
+				min = population[i].fitness;
+				tempCromosome = population[i];
+			}
+		}
+		if(min < optimal.individual.fitness){
+			optimal.race = id;
+			optimal.generation = generation;
+			optimal.individual = tempCromosome;
+			printf("\x1B[32mRaza #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
+				id, generation, min, total2/N, optimal.race, optimal.generation, optimal.individual.fitness);
+		}
+		else{
+			printf("\x1B[0mRaza #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
+				id, generation, min, total2/N, optimal.race, optimal.generation, optimal.individual.fitness);
+		}
+
+		// Ordenamos para dejar los mejores al principio
+		qsort (population, N, sizeof(Cromosome), compare);
+
+		// Se realiza cálculo de la ruleta (minimización)
+		float totalRoulette = 0;
+		for(int i=0;i<N;i++){
+			totalRoulette += (max - population[i].fitness + min) / max;
+			population[i].roulette = totalRoulette;
+		}
+
+		// Se seleccionan N_COUPLES
+		int i=0;
+		while(i<N_COUPLES){
+			double n1 = randomDouble(totalRoulette);
+			double n2 = randomDouble(totalRoulette);
+			if(n1 != n2){
+				for(int j=0;j<N;j++){
+					if(population[j].roulette >= n1 && n1 != -1){
+						parents[i].parent1 = population[j];
+						n1 = -1;
+					}
+					if(population[j].roulette >= n2 && n2 != -1){
+						parents[i].parent2 = population[j];
+						n2 = -1;
+					}
+				}
+				i++;
+			}
+		}
+
+		// Se cruzan los padres los dos que están seguidos (se crea nueva generación)
+		int child = 0;
+		int bitSplitter = randomInt(adnSize);
+		for(int i=0;i<N_COUPLES;i++){
+			crossover(bitSplitter, &parents[i], &population[child++], &population[child++]);
+		}
+
+		// Aplicamos mutación
+		int toMutate = N * MUTATION;
+		for(int i=0;i<toMutate;i++){
+			int who = randomInt(N - ELITISM);
+			mutate(&population[who + ELITISM]);
+		}
+	}
 }
-
-void *crossoverParents(void *arg){
-    int id = *(int*) arg;
-    int chunk = N_COUPLES/THREADS;
-    int start = id * chunk;
-    int end = start + chunk;
-    int child = start * 2;
-    //printf("id: %d, limit: %d, start: %d, end: %d, parents: %d, chunk: %d\n",id, limit, start, end, N_COUPLES, chunk);
-    do{
-        crossover(&parents[start].parent1, &parents[start].parent2, &population[child++], &population[child++]);
-        start++;
-    }while(start < end);
-}
-
 
 int main(){
     int id[THREADS];
     pthread_t threads[THREADS];
     setSeed();
     calcSizes();
-    // Se crea población inicial
-    population = (struct Cromosome *)malloc(N * sizeof(struct Cromosome));
-    for(int i=0;i<N;i++){
-        population[i] = randomCromosome();
-    }
-    while(generation < GENERATIONS){
-        generation++;
-        double min = DBL_MAX, max = -DBL_MAX, total = 0;
-        struct Cromosome tempCromosome;
-        for(int i=0;i<N;i++){
-            total += population[i].fitness;
-            if(population[i].fitness < min){
-                min = population[i].fitness;
-                tempCromosome = population[i];
-            }
-            if(population[i].fitness > max){
-                max = population[i].fitness;
-            }
-        }
-        if(min < minGlobal){
-            minGlobal = min;
-            minGeneration = generation;
-            minCromosome = tempCromosome;
-        }
-        printf("Generation #%d, min: %f, avg: %f, global(%d): %f\n", generation, min, total/N, minGeneration, minGlobal);
 
-        // Se realiza cálculo de la ruleta (minimización)
-        totalRoulette = 0;
-        for(int i=0;i<N;i++){
-            totalRoulette = max - min - population[i].fitness + totalRoulette;
-            population[i].roulette = totalRoulette;
-        }
+	optimal.individual = randomCromosome();
+	optimal.individual.fitness = DBL_MAX;
+	N = N / THREADS;
+	N_COUPLES = (N - ELITISM) / 2;
 
-        // Se seleccionan N_COUPLES
-        for(int i=0; i <THREADS; i++){
-            id[i] = i;
-            pthread_create(&threads[i], NULL, selectParents, &id[i]);
-        }
-        for(int i=0; i <THREADS; i++) pthread_join(threads[i], NULL);
+	for(int i=0; i <THREADS; i++){
+		id[i] = i;
+		pthread_create(&threads[i], NULL, createRace, &id[i]);
+	}
 
-        // Se cruzan los padres los dos que están seguidos (se crea nueva generación)
-        population = (struct Cromosome *)malloc(N * sizeof(struct Cromosome));
-        for(int i=0; i <THREADS; i++){
-            id[i] = i;
-            pthread_create(&threads[i], NULL, crossoverParents, &id[i]);
-        }
-        for(int i=0; i <THREADS; i++) pthread_join(threads[i], NULL);
-    }
+	for(int i=0; i <THREADS; i++){
+		pthread_join(threads[i], NULL);
+	}
 
-    printf("Ganador: \n");
-    showCromosome(&minCromosome);
+	printf("\x1B[32mGanador: Raza: %d, Generación: %d\n", optimal.race, optimal.generation);
+    showCromosome(&optimal.individual);
 }
 
 // Compile: gcc main-posix.c -o bin/main-posix -lm -lpthread
 // Execute: time ./bin/main-posix
-// 2.778s
+// 4 threads: 30.894s
+// 3 threads: 40.571s
+// 2 threads: 58.058s
+// 1 threads: 188.429s
