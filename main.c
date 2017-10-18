@@ -11,8 +11,9 @@ int main(){
     calcSizes();
 
 	Optimal optimal = {randomCromosome(), 0, 0};
+	showCromosome(&optimal.individual);
 	optimal.individual.fitness = DBL_MAX;
-	N = N / THREADS;
+	//N = N / THREADS;
 	N_COUPLES = (N - ELITISM) / 2;
 
 	Cromosome tempCromosome;
@@ -26,14 +27,15 @@ int main(){
     }
     while(generation < GENERATIONS){
         generation++;
-        double min = DBL_MAX, max = -DBL_MAX, total = 0, total2 = 0;
+        double min = DBL_MAX, max = -DBL_MAX, total = 0;
         for(int i=0;i<N;i++){
-			total2 += population[i].fitness;
-			// Si no está en el rango, le asignamos el valor más alto de castigo (minimizacion)
+			// Si no está en el rango, creamos uno nuevo
 			if(!checkBoundaries(&population[i])){
-				population[i].fitness = 300;
+				generateAdn(&population[i]);
 			}
-            total += population[i].fitness;
+			//calculamos el fitness
+			population[i].fitness = fitness(population[i].x, population[i].y);
+			total += population[i].fitness;
             if(population[i].fitness < min){
                 min = population[i].fitness;
                 tempCromosome = population[i];
@@ -46,22 +48,22 @@ int main(){
 			optimal.race = 0;
 			optimal.generation = generation;
 			optimal.individual = tempCromosome;
-			printf("\x1B[32mRaza #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
-				0, generation, min, total2/N, optimal.race, optimal.generation, optimal.individual.fitness);
+			printf("\x1B[32mPopulation #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
+				0, generation, min, total/N, optimal.race, optimal.generation, optimal.individual.fitness);
 		}
 		else{
-			printf("\x1B[0mRaza #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
-				0, generation, min, total2/N, optimal.race, optimal.generation, optimal.individual.fitness);
+			printf("\x1B[0mPopulation #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
+				0, generation, min, total/N, optimal.race, optimal.generation, optimal.individual.fitness);
 		}
-
-		// Ordenamos para dejar los mejores al principio
-		qsort (population, N, sizeof(Cromosome), compare);
 
         // Se realiza cálculo de la ruleta (minimización)
         float totalRoulette = 0;
         for(int i=0;i<N;i++){
-			totalRoulette += (max - population[i].fitness + min) / max;
+			population[i].before = totalRoulette;
+			population[i].fitness = max - population[i].fitness + min;
+			totalRoulette += population[i].fitness;
             population[i].roulette = totalRoulette;
+			population[i].before = totalRoulette - population[i].before;
         }
 
         // Se seleccionan N_COUPLES
@@ -69,34 +71,25 @@ int main(){
         while(i<N_COUPLES){
             double n1 = randomDouble(totalRoulette);
             double n2 = randomDouble(totalRoulette);
-            if(n1 != n2){
-                for(int j=0;j<N;j++){
-                    if(population[j].roulette >= n1 && n1 != -1){
-                        parents[i].parent1 = population[j];
-                        n1 = -1;
-                    }
-                    if(population[j].roulette >= n2 && n2 != -1){
-                        parents[i].parent2 = population[j];
-                        n2 = -1;
-                    }
+            for(int j=0;j<N;j++){
+                if(population[j].roulette >= n1 && n1 != -1){
+                    parents[i].parent1 = population[j];
+                    n1 = -1;
                 }
-                i++;
+                if(population[j].roulette >= n2 && n2 != -1){
+                    parents[i].parent2 = population[j];
+                    n2 = -1;
+                }
             }
+            i++;
         }
 
         // Se cruzan los padres los dos que están seguidos (se crea nueva generación)
-        int child = 0;
-		int bitSplitter = randomInt(adnSize);
+        int child = ELITISM;
         for(int i=0;i<N_COUPLES;i++){
+			int bitSplitter = randomInt(adnSize);
             crossover(bitSplitter, &parents[i], &population[child++], &population[child++]);
         }
-
-		// Aplicamos mutación
-		int toMutate = N * MUTATION;
-		for(int i=0;i<toMutate;i++){
-			int who = randomInt(N - ELITISM);
-			mutate(&population[who + ELITISM]);
-		}
     }
 
 	printf("\x1B[32mGanador: Raza: %d, Generación: %d\n", optimal.race, optimal.generation);

@@ -1,11 +1,13 @@
-#define THREADS 4
+#define THREADS 100
 #define DECIMALS 2
-#define GENERATIONS 1000
-#define MUTATION 0.3
+#define GENERATIONS 100
+#define MUTATION 0.01
 
 int N = 10000;
-int ELITISM = 10;
+int ELITISM = 0;
 int N_COUPLES;
 
-int minX = -15, maxX = 0;
-int minY = -3, maxY = 3;
+#define minX -15
+#define maxX 0
+#define minY -3
+#define maxY 3

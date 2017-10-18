@@ -10,8 +10,12 @@ int randomInt(int max) {
     return rand() % max;
 }
 
-float randomDouble(double max){
-    return (double)rand()/(double)(RAND_MAX/max);
+double randomDouble(double max){
+    return max * (double)rand()/(double)(RAND_MAX);
+}
+
+double randomBetween(double min, double max){
+	return min + ((max-min) * (double)rand()/(double)(RAND_MAX));
 }
 
 double fitness(double x, double y){

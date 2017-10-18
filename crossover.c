@@ -22,7 +22,13 @@ void binary2y(Cromosome *child){
     child->y = y / nDecimals + minY;
 }
 
+void mutate(Cromosome *individual){
+	int bitMutation = randomInt(adnSize);
+	individual->adn[bitMutation] = !individual->adn[bitMutation];
+}
+
 void crossover(int bitSplitter, Couple *couple, Cromosome *child1, Cromosome *child2){
+	bitSplitter = randomInt(adnSize);
     child1->adn = (int *)malloc(adnSize * sizeof(int));
     child2->adn = (int *)malloc(adnSize * sizeof(int));
     for(int i=0; i<adnSize; i++){
@@ -35,18 +41,14 @@ void crossover(int bitSplitter, Couple *couple, Cromosome *child1, Cromosome *ch
             child2->adn[i] = couple->parent1.adn[i];
         }
     }
+	if(randomDouble(1) < MUTATION){
+		mutate(child1);
+	}
+	if(randomDouble(1) < MUTATION){
+		mutate(child2);
+	}
     binary2x(child1);
     binary2y(child1);
     binary2x(child2);
     binary2y(child2);
-    child1->fitness = fitness(child1->x, child1->y);
-    child2->fitness = fitness(child2->x, child2->y);
-}
-
-void mutate(Cromosome *individual){
-	int bitMutation = randomInt(adnSize);
-	individual->adn[bitMutation] = !individual->adn[bitMutation];
-	binary2x(individual);
-    binary2y(individual);
-    individual->fitness = fitness(individual->x, individual->y);
 }

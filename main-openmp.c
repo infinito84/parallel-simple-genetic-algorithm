@@ -28,40 +28,44 @@ int main(){
 	    }
 
 	    while(generation < GENERATIONS){
-	        generation++;
-	        double min = DBL_MAX, max = -DBL_MAX, total = 0, total2 = 0;
+			generation++;
+	        double min = DBL_MAX, max = -DBL_MAX, total = 0;
 	        for(int i=0;i<N;i++){
-				// Si no está en el rango, lo castigamos con un fitness alto
-				total2 += population[i].fitness;
+				// Si no está en el rango, creamos uno nuevo
 				if(!checkBoundaries(&population[i])){
-					population[i].fitness = 300;
+					generateAdn(&population[i]);
 				}
-	            total += population[i].fitness;
+				//calculamos el fitness
+				population[i].fitness = fitness(population[i].x, population[i].y);
+				total += population[i].fitness;
 	            if(population[i].fitness < min){
 	                min = population[i].fitness;
 	                tempCromosome = population[i];
 	            }
+	            if(population[i].fitness > max){
+	                max = population[i].fitness;
+	            }
 	        }
 			if(min < optimal.individual.fitness){
-	            optimal.race = id;
-	            optimal.generation = generation;
-	            optimal.individual = tempCromosome;
-				printf("\x1B[32mRaza #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
-					id, generation, min, total2/N, optimal.race, optimal.generation, optimal.individual.fitness);
-	        }
-			else{
-	        	printf("\x1B[0mRaza #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
-					id, generation, min, total2/N, optimal.race, optimal.generation, optimal.individual.fitness);
+				optimal.race = id;
+				optimal.generation = generation;
+				optimal.individual = tempCromosome;
+				printf("\x1B[32mPopulation #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
+					id, generation, min, total/N, optimal.race, optimal.generation, optimal.individual.fitness);
 			}
-
-			// Ordenamos para dejar los mejores al principio
-			qsort (population, N, sizeof(Cromosome), compare);
+			else{
+				printf("\x1B[0mPopulation #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
+					id, generation, min, total/N, optimal.race, optimal.generation, optimal.individual.fitness);
+			}
 
 	        // Se realiza cálculo de la ruleta (minimización)
 	        float totalRoulette = 0;
 	        for(int i=0;i<N;i++){
-				totalRoulette += (max - population[i].fitness + min) / max;
+				population[i].before = totalRoulette;
+				population[i].fitness = max - population[i].fitness + min;
+				totalRoulette += population[i].fitness;
 	            population[i].roulette = totalRoulette;
+				population[i].before = totalRoulette - population[i].before;
 	        }
 
 	        // Se seleccionan N_COUPLES
@@ -69,34 +73,25 @@ int main(){
 	        while(i<N_COUPLES){
 	            double n1 = randomDouble(totalRoulette);
 	            double n2 = randomDouble(totalRoulette);
-	            if(n1 != n2){
-	                for(int j=0;j<N;j++){
-	                    if(population[j].roulette >= n1 && n1 != -1){
-	                        parents[i].parent1 = population[j];
-	                        n1 = -1;
-	                    }
-	                    if(population[j].roulette >= n2 && n2 != -1){
-	                        parents[i].parent2 = population[j];
-	                        n2 = -1;
-	                    }
+	            for(int j=0;j<N;j++){
+	                if(population[j].roulette >= n1 && n1 != -1){
+	                    parents[i].parent1 = population[j];
+	                    n1 = -1;
 	                }
-	                i++;
+	                if(population[j].roulette >= n2 && n2 != -1){
+	                    parents[i].parent2 = population[j];
+	                    n2 = -1;
+	                }
 	            }
+	            i++;
 	        }
 
 	        // Se cruzan los padres los dos que están seguidos (se crea nueva generación)
-	        int child = 0;
-			int bitSplitter = randomInt(adnSize);
+	        int child = ELITISM;
 	        for(int i=0;i<N_COUPLES;i++){
+				int bitSplitter = randomInt(adnSize);
 	            crossover(bitSplitter, &parents[i], &population[child++], &population[child++]);
 	        }
-
-			// Aplicamos mutación
-			int toMutate = N * MUTATION;
-			for(int i=0;i<toMutate;i++){
-				int who = randomInt(N - ELITISM);
-				mutate(&population[who + ELITISM]);
-			}
 	    }
 	}
 
@@ -106,7 +101,17 @@ int main(){
 
 // Compile: gcc main-openmp.c -o bin/main-openmp -lm -fopenmp
 // Execute: time ./bin/main-openmp
-// 4 threads: 32.204s
-// 3 threads: 40.934s
-// 2 threads: 60.535s
-// 1 threads: 189.882s
+/* threads  tiempo
+1	189.882
+2	60.535
+3	40.934
+4	32.204
+5	26.439
+6	23.135
+7	23.026
+8	24.555
+16	19.579
+32	13.769
+50	10.641  #hasta aquí bien
+100	8.285
+*/

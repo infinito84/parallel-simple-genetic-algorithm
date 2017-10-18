@@ -1,33 +1,35 @@
 #include <stdio.h>
-#include <omp.h>
+#include <cuda_runtime.h>
 #include <float.h>
-#include <pthread.h>
 #include "structures.c"
 #include "constants.c"
-#include "utils.c"
-#include "cromosome.c"
-#include "crossover.c"
+#include "utils.cu"
+#include "cromosome.cu"
+#include "crossover.cu"
 
-Optimal optimal;
-
-void *createRace(void *arg){
+__global__ void createPopulation(Optimal best, int N, int N_COUPLES, int ELITISM, int adnSize, int nDecimals, int yBits){
+	int id = blockDim.x * blockIdx.x + threadIdx.x;
+	if(id >= THREADS) return;
+	curandState_t state;
 	Cromosome tempCromosome;
+	Optimal optimal;
 	int generation = 0;
-	int id = *(int*) arg;
+	setSeed(&state);
 	// Se crea población inicial
-	Cromosome population[N];
-	Couple parents[N_COUPLES];
+	Cromosome *population = new Cromosome[N];
+	Couple *parents = new Couple[N_COUPLES];
 	for(int i=0;i<N;i++){
-		population[i] = randomCromosome();
+		population[i] = randomCromosome(&state, adnSize, nDecimals, yBits);
 	}
-
+	optimal.race = id;
+	optimal.individual.fitness = DBL_MAX;
 	while(generation < GENERATIONS){
 		generation++;
         double min = DBL_MAX, max = -DBL_MAX, total = 0;
         for(int i=0;i<N;i++){
 			// Si no está en el rango, creamos uno nuevo
 			if(!checkBoundaries(&population[i])){
-				generateAdn(&population[i]);
+				generateAdn(&state, &population[i], adnSize, nDecimals, yBits);
 			}
 			//calculamos el fitness
 			population[i].fitness = fitness(population[i].x, population[i].y);
@@ -41,15 +43,14 @@ void *createRace(void *arg){
             }
         }
 		if(min < optimal.individual.fitness){
-			optimal.race = id;
 			optimal.generation = generation;
 			optimal.individual = tempCromosome;
-			printf("\x1B[32mPopulation #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
-				id, generation, min, total/N, optimal.race, optimal.generation, optimal.individual.fitness);
+			printf("\x1B[32mPopulation #%d, Generation #%d, min: %f, avg: %f, good(%d): %f\n",
+				id, generation, min, total/N, optimal.generation, optimal.individual.fitness);
 		}
 		else{
-			printf("\x1B[0mPopulation #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
-				id, generation, min, total/N, optimal.race, optimal.generation, optimal.individual.fitness);
+			printf("\x1B[0mPopulation #%d, Generation #%d, min: %f, avg: %f, good(%d): %f\n",
+				id, generation, min, total/N, optimal.generation, optimal.individual.fitness);
 		}
 
         // Se realiza cálculo de la ruleta (minimización)
@@ -65,8 +66,8 @@ void *createRace(void *arg){
         // Se seleccionan N_COUPLES
         int i=0;
         while(i<N_COUPLES){
-            double n1 = randomDouble(totalRoulette);
-            double n2 = randomDouble(totalRoulette);
+            double n1 = randomDouble(&state, totalRoulette);
+            double n2 = randomDouble(&state, totalRoulette);
             for(int j=0;j<N;j++){
                 if(population[j].roulette >= n1 && n1 != -1){
                     parents[i].parent1 = population[j];
@@ -83,38 +84,35 @@ void *createRace(void *arg){
         // Se cruzan los padres los dos que están seguidos (se crea nueva generación)
         int child = ELITISM;
         for(int i=0;i<N_COUPLES;i++){
-			int bitSplitter = randomInt(adnSize);
-            crossover(bitSplitter, &parents[i], &population[child++], &population[child++]);
+			int bitSplitter = randomInt(&state, adnSize);
+            crossover(&state, bitSplitter, &parents[i], &population[child++], &population[child++], adnSize, nDecimals, yBits);
         }
 	}
 }
 
 int main(){
-    int id[THREADS];
-    pthread_t threads[THREADS];
-    setSeed();
-    calcSizes();
-
-	optimal.individual = randomCromosome();
-	optimal.individual.fitness = DBL_MAX;
+    Optimal best;
+	best.individual.fitness = DBL_MAX;
 	N = N / THREADS;
 	N_COUPLES = (N - ELITISM) / 2;
 
-	for(int i=0; i <THREADS; i++){
-		id[i] = i;
-		pthread_create(&threads[i], NULL, createRace, &id[i]);
-	}
-
-	for(int i=0; i <THREADS; i++){
-		pthread_join(threads[i], NULL);
-	}
-
-	printf("\x1B[32mGanador: Raza: %d, Generación: %d\n", optimal.race, optimal.generation);
-    showCromosome(&optimal.individual);
+    calcSizes();
+	cudaError_t err = cudaSuccess;
+	int blocks = 6;
+	int threadsPerBlock = THREADS/blocks;
+	createPopulation<<<blocks, threadsPerBlock>>>(best, N, N_COUPLES, ELITISM, adnSize, nDecimals, yBits);
+	err = cudaGetLastError();
+    if (err != cudaSuccess){
+        fprintf(stderr, "Failed to launch vectorAdd kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+	cudaDeviceSynchronize();
+	printf("\x1B[32mGanador: Raza: %d, Generación: %d\n", best.race, best.generation);
+    //showCromosome(&best.individual, adnSize);
 }
 
-// Compile: gcc main-posix.c -o bin/main-posix -lm -lpthread
-// Execute: time ./bin/main-posix
+// Compile: /usr/local/cuda-9.0/bin/nvcc main-cuda.cu -o bin/main-cuda -lm
+// Execute: time ./bin/main-cuda
 /* threads   tiempo
 1	188.429
 2	58.058

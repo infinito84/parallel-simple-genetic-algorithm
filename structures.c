@@ -4,6 +4,7 @@ typedef struct {
     int *adn;
     double fitness;
     double roulette;
+	double before;
 } Cromosome;
 
 typedef struct {
