@@ -28,10 +28,7 @@ __device__ void mutate(curandState_t *state, Cromosome *individual, int adnSize)
 }
 
 __device__ void crossover(curandState_t *state, int bitSplitter, Couple *couple, Cromosome *child1, Cromosome *child2, int adnSize, int nDecimals, int yBits){
-	bitSplitter = randomInt(state, adnSize);
-    child1->adn = (int *)malloc(adnSize * sizeof(int));
-    child2->adn = (int *)malloc(adnSize * sizeof(int));
-    for(int i=0; i<adnSize; i++){
+	for(int i=0; i<adnSize; i++){
         if(i < bitSplitter){
             child1->adn[i] = couple->parent1.adn[i];
             child2->adn[i] = couple->parent2.adn[i];

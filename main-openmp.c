@@ -26,6 +26,10 @@ int main(){
 	    for(int i=0;i<N;i++){
 	        population[i] = randomCromosome();
 	    }
+		for(int i=0;i<N_COUPLES;i++){
+			parents[i].parent1 = randomCromosome();
+			parents[i].parent2 = randomCromosome();
+		}
 
 	    while(generation < GENERATIONS){
 			generation++;
@@ -50,10 +54,6 @@ int main(){
 				optimal.race = id;
 				optimal.generation = generation;
 				optimal.individual = tempCromosome;
-				printf("\x1B[32mPopulation #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
-					id, generation, min, total/N, optimal.race, optimal.generation, optimal.individual.fitness);
-			}
-			else{
 				printf("\x1B[0mPopulation #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
 					id, generation, min, total/N, optimal.race, optimal.generation, optimal.individual.fitness);
 			}
@@ -74,12 +74,12 @@ int main(){
 	            double n1 = randomDouble(totalRoulette);
 	            double n2 = randomDouble(totalRoulette);
 	            for(int j=0;j<N;j++){
-	                if(population[j].roulette >= n1 && n1 != -1){
-	                    parents[i].parent1 = population[j];
+					if(population[j].roulette >= n1 && n1 != -1){
+	                    copy(&parents[i].parent1, &population[j], adnSize);
 	                    n1 = -1;
 	                }
 	                if(population[j].roulette >= n2 && n2 != -1){
-	                    parents[i].parent2 = population[j];
+	                    copy(&parents[i].parent1, &population[j], adnSize);
 	                    n2 = -1;
 	                }
 	            }
@@ -102,16 +102,13 @@ int main(){
 // Compile: gcc main-openmp.c -o bin/main-openmp -lm -fopenmp
 // Execute: time ./bin/main-openmp
 /* threads  tiempo
-1	189.882
-2	60.535
-3	40.934
-4	32.204
-5	26.439
-6	23.135
-7	23.026
-8	24.555
-16	19.579
-32	13.769
-50	10.641  #hasta aquí bien
-100	8.285
+1	190.699
+2	59.544
+4	29.541
+8	19.354
+50	8.887
+100	8.169
+200 7.408
+500 7.549
+1000 7.603
 */

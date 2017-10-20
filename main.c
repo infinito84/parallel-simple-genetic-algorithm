@@ -25,6 +25,10 @@ int main(){
     for(int i=0;i<N;i++){
         population[i] = randomCromosome();
     }
+	for(int i=0;i<N_COUPLES;i++){
+		parents[i].parent1 = randomCromosome();
+		parents[i].parent2 = randomCromosome();
+	}
     while(generation < GENERATIONS){
         generation++;
         double min = DBL_MAX, max = -DBL_MAX, total = 0;
@@ -73,11 +77,11 @@ int main(){
             double n2 = randomDouble(totalRoulette);
             for(int j=0;j<N;j++){
                 if(population[j].roulette >= n1 && n1 != -1){
-                    parents[i].parent1 = population[j];
+                    copy(&parents[i].parent1, &population[j], adnSize);
                     n1 = -1;
                 }
                 if(population[j].roulette >= n2 && n2 != -1){
-                    parents[i].parent2 = population[j];
+                    copy(&parents[i].parent1, &population[j], adnSize);
                     n2 = -1;
                 }
             }
@@ -98,4 +102,4 @@ int main(){
 
 // Compile: gcc main.c -o bin/main -lm
 // Execute: time ./bin/main
-// 193.276s
+// 188.504s

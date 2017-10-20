@@ -1,8 +1,8 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
-__device__ void setSeed(curandState_t *state){
-	curand_init((unsigned long long)clock(), 0, 0, state);
+__device__ void setSeed(curandState_t *state, int id){
+	curand_init((unsigned long long)clock()*id, 0, 0, state);
 }
 
 __device__ double randomDouble(curandState_t *state, double max){
@@ -27,9 +27,6 @@ __device__ int checkBoundaries(Cromosome *individual){
 }
 
 __device__ void copy(Cromosome *to, Cromosome *from, int adnSize){
-	to->x = from->x;
-	to->y = from->y;
-	to->fitness = from->fitness;
 	for(int i=0; i<adnSize;i++){
 		to->adn[i] = from->adn[i];
 	}

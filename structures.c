@@ -17,3 +17,11 @@ typedef struct {
     int generation;
 	int race;
 } Optimal;
+
+typedef struct {
+    Cromosome *individuals;
+	Couple *couples;
+    int generation;
+	int race;
+	Optimal optimal;
+} Population;

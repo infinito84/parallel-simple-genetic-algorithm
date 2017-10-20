@@ -1,7 +1,8 @@
-#define THREADS 100
+#define THREADS 1000
 #define DECIMALS 2
-#define GENERATIONS 100
-#define MUTATION 0.01
+#define GENERATIONS 1000
+#define MUTATION 0.1
+#define BLOCKS 50
 
 int N = 10000;
 int ELITISM = 0;

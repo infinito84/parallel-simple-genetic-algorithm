@@ -20,6 +20,10 @@ void *createRace(void *arg){
 	for(int i=0;i<N;i++){
 		population[i] = randomCromosome();
 	}
+	for(int i=0;i<N_COUPLES;i++){
+		parents[i].parent1 = randomCromosome();
+		parents[i].parent2 = randomCromosome();
+	}
 
 	while(generation < GENERATIONS){
 		generation++;
@@ -44,10 +48,6 @@ void *createRace(void *arg){
 			optimal.race = id;
 			optimal.generation = generation;
 			optimal.individual = tempCromosome;
-			printf("\x1B[32mPopulation #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
-				id, generation, min, total/N, optimal.race, optimal.generation, optimal.individual.fitness);
-		}
-		else{
 			printf("\x1B[0mPopulation #%d, Generation #%d, min: %f, avg: %f, global(%d#%d): %f\n",
 				id, generation, min, total/N, optimal.race, optimal.generation, optimal.individual.fitness);
 		}
@@ -68,14 +68,14 @@ void *createRace(void *arg){
             double n1 = randomDouble(totalRoulette);
             double n2 = randomDouble(totalRoulette);
             for(int j=0;j<N;j++){
-                if(population[j].roulette >= n1 && n1 != -1){
-                    parents[i].parent1 = population[j];
-                    n1 = -1;
-                }
-                if(population[j].roulette >= n2 && n2 != -1){
-                    parents[i].parent2 = population[j];
-                    n2 = -1;
-                }
+				if(population[j].roulette >= n1 && n1 != -1){
+					copy(&parents[i].parent1, &population[j], adnSize);
+					n1 = -1;
+				}
+				if(population[j].roulette >= n2 && n2 != -1){
+					copy(&parents[i].parent1, &population[j], adnSize);
+					n2 = -1;
+				}
             }
             i++;
         }
@@ -116,16 +116,13 @@ int main(){
 // Compile: gcc main-posix.c -o bin/main-posix -lm -lpthread
 // Execute: time ./bin/main-posix
 /* threads   tiempo
-1	188.429
-2	58.058
-3	40.571
-4	30.894
-5	26.768
-6	23.155
-7	23.493
-8	24.828
-16	18.900
-32	13.670
-50	10.631
-100	9.659
+1	192.611
+2	55.789
+4	29.466
+8	19.559
+50	8.937
+100	8.155
+200 8.117
+500 8.265
+1000 8.621
 */

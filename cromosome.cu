@@ -47,7 +47,7 @@ __device__ __host__ void showCromosome(Cromosome *temp, int adnSize){
 
 __device__ Cromosome randomCromosome(curandState_t *state, int adnSize, int nDecimals, int yBits){
     Cromosome temp;
-    temp.adn = (int *)malloc(adnSize * sizeof(int));
+    temp.adn = new int[adnSize];
 	generateAdn(state, &temp, adnSize, nDecimals, yBits);
 	//showCromosome(&temp, adnSize);
     return temp;

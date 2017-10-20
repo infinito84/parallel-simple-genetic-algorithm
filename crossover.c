@@ -28,8 +28,7 @@ void mutate(Cromosome *individual){
 }
 
 void crossover(int bitSplitter, Couple *couple, Cromosome *child1, Cromosome *child2){
-	bitSplitter = randomInt(adnSize);
-    child1->adn = (int *)malloc(adnSize * sizeof(int));
+	child1->adn = (int *)malloc(adnSize * sizeof(int));
     child2->adn = (int *)malloc(adnSize * sizeof(int));
     for(int i=0; i<adnSize; i++){
         if(i < bitSplitter){

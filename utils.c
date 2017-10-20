@@ -32,3 +32,9 @@ int compare (const void * a, const void * b){
 	Cromosome c2 = *(Cromosome*)b;
   	return c1.fitness - c2.fitness;
 }
+
+void copy(Cromosome *to, Cromosome *from, int adnSize){
+	for(int i=0; i<adnSize;i++){
+		to->adn[i] = from->adn[i];
+	}
+}
